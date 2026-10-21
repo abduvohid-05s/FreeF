@@ -1,0 +1,50 @@
+name: Build Shadow Gardem APK
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17 (Temurin)
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
+
+      - name: Extract project ZIP
+        run: unzip -q Loyiha.zip -d proj
+
+      - name: Build debug APK
+        run: gradle -p proj assembleDebug --no-daemon
+
+      - name: Find APK path
+        id: apk
+        run: |
+          APK_PATH=$(find proj -name "app-debug.apk" | head -1)
+          echo "path=$APK_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release and upload APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="build-$(date +%Y%m%d-%H%M%S)"
+          gh release create "$TAG" \
+            --title "Shadow Gardem APK — $TAG" \
+            --notes "Automated build. Key check removed." \
+            "${{ steps.apk.outputs.path }}"
